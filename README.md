@@ -1,1 +1,1 @@
-# Airbnb_price_prediction
+# Airbnb price prediction
