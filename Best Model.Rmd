@@ -1,0 +1,103 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+install.packages("xgboost")
+install.packages("forcats")
+library(forcats)
+library(xgboost)
+library(dplyr)
+
+setwd("~/Documents/apan5200/rentlala2021/")
+train <- read.csv("analysisData.csv",stringsAsFactors = TRUE)
+test <- read.csv("scoringData.csv",stringsAsFactors = TRUE)
+test[is.na(test)] = 0
+test2 <- test%>%
+ mutate(neighbourhood = replace(neighbourhood,neighbourhood %in% c("Bull's Head","Castleton Corners","Meiers Corners"),"Staten Island"))
+
+
+
+start_mod = lm(price~1,data=train1)
+empty_mod = lm(price~1,data=train1)
+full_mod = lm(price~bathrooms+bedrooms+beds+room_type+review_scores_rating+property_type+accommodates+cancellation_policy+availability_365+minimum_nights_avg_ntm+maximum_nights_avg_ntm+guests_included+extra_people+number_of_reviews+host_location+host_is_superhost+host_neighbourhood+host_listings_count+host_total_listings_count+neighbourhood_group_cleansed+smart_location+security_deposit+cleaning_fee+has_availability,data=train1)
+forwardStepwise = step(start_mod,
+                       scope=list(upper=full_mod,lower=empty_mod),
+                       direction='forward')
+train2 <- train1%>%
+  select(c(accommodates, cleaning_fee, 
+  bedrooms,  bathrooms, review_scores_rating, availability_365, minimum_nights_avg_ntm, 
+    number_of_reviews, guests_included, beds, host_is_superhost, maximum_nights_avg_ntm, extra_people, 
+    host_listings_count))
+
+neighbourhood <- model.matrix(~neighbourhood-1,train3)
+neighbourhood_cleansed <- model.matrix(~neighbourhood_group_cleansed-1,train3)
+property_type <- model.matrix(~property_type-1,train3)
+cancellation_policy <- model.matrix(~cancellation_policy-1,train3)
+room_type<-model.matrix(~room_type-1,train3)
+
+train_numeric<-cbind(train2,neighbourhood,neighbourhood_cleansed,property_type,cancellation_policy,room_type)
+train_matrix <-data.matrix(train_numeric)
+
+
+train1%>%
+  mutate(neighbourhood = fct_lump(f = neighbourhood,prop = 0.0058))%>%
+  group_by(neighbourhood)%>%
+  summarise(n=n())
+  
+  test3%>%
+    mutate(neighbourhood = fct_lump(f = neighbourhood,prop = 0.004))%>%
+  group_by(neighbourhood)%>%
+  summarise(n=n())
+
+train3<-train1%>%
+  mutate(neighbourhood = fct_lump(f = neighbourhood,prop = 0.0068))%>%
+  mutate(property_type = fct_lump(f = property_type,prop = 0.005))
+
+test4<-test3%>%
+mutate(neighbourhood = fct_lump(f = neighbourhood,prop = 0.0065))%>%
+  mutate(property_type = fct_lump(f = property_type,prop = 0.006))
+  
+
+
+
+
+
+
+test5 <- test4%>%
+   select(c(accommodates, cleaning_fee, 
+  bedrooms,  bathrooms, review_scores_rating, availability_365, minimum_nights_avg_ntm, 
+    number_of_reviews, guests_included, beds, host_is_superhost, maximum_nights_avg_ntm, extra_people, 
+    host_listings_count))
+
+neighbourhoodT <- model.matrix(~neighbourhood-1,test4)
+neighbourhood_cleansedT <- model.matrix(~neighbourhood_group_cleansed-1,test4)
+property_typeT <- model.matrix(~property_type-1,test4)
+cancellation_policyT <- model.matrix(~cancellation_policy-1,test4)
+room_typeT<-model.matrix(~room_type-1,test4)
+
+test_numeric <-cbind(test5,neighbourhoodT,neighbourhood_cleansedT,property_typeT,cancellation_policyT,room_typeT)
+test_matrix <- data.matrix(test_numeric)
+
+train_label<-train1%>%
+  select(price)
+
+
+dtrain <- xgb.DMatrix(data = train_matrix, label= train_label$price)
+
+modelx <- xgboost(data = dtrain, 
+                 nrounds=10000,
+                  verbose = 0,
+                  early_stopping_rounds = 100)
+
+pred13<-predict(modelx, newdata = test_matrix)
+
+
+
+
+submissionFile13 = data.frame(id = test$id, price = pred13)
+write.csv(submissionFile13, 'submission13.csv',row.names = F)
+
+```
+
